@@ -563,86 +563,113 @@ void Simulator::handle_message_hil_state_quaternion(const mavlink_message_t *msg
 
 	uint64_t timestamp = hrt_absolute_time();
 
-	/* angular velocity */
-	vehicle_angular_velocity_s hil_angular_velocity{};
+	if (msg->compid == 200)
 	{
-		hil_angular_velocity.timestamp = timestamp;
+		/* angular velocity */
+		vehicle_angular_velocity_s hil_angular_velocity{};
+		{
+			hil_angular_velocity.timestamp = timestamp;
 
-		hil_angular_velocity.xyz[0] = hil_state.rollspeed;
-		hil_angular_velocity.xyz[1] = hil_state.pitchspeed;
-		hil_angular_velocity.xyz[2] = hil_state.yawspeed;
+			hil_angular_velocity.xyz[0] = hil_state.rollspeed;
+			hil_angular_velocity.xyz[1] = hil_state.pitchspeed;
+			hil_angular_velocity.xyz[2] = hil_state.yawspeed;
 
-		// always publish ground truth attitude message
-		_vehicle_angular_velocity_ground_truth_pub.publish(hil_angular_velocity);
-	}
-
-	/* attitude */
-	vehicle_attitude_s hil_attitude{};
-	{
-		hil_attitude.timestamp = timestamp;
-
-		matrix::Quatf q(hil_state.attitude_quaternion);
-		q.copyTo(hil_attitude.q);
-
-		// always publish ground truth attitude message
-		_attitude_ground_truth_pub.publish(hil_attitude);
-	}
-
-	/* global position */
-	vehicle_global_position_s hil_gpos{};
-	{
-		hil_gpos.timestamp = timestamp;
-
-		hil_gpos.lat = hil_state.lat / 1E7;//1E7
-		hil_gpos.lon = hil_state.lon / 1E7;//1E7
-		hil_gpos.alt = hil_state.alt / 1E3;//1E3
-
-		// always publish ground truth attitude message
-		_gpos_ground_truth_pub.publish(hil_gpos);
-	}
-
-	/* local position */
-	vehicle_local_position_s hil_lpos{};
-	{
-		hil_lpos.timestamp = timestamp;
-
-		double lat = hil_state.lat * 1e-7;
-		double lon = hil_state.lon * 1e-7;
-
-		if (!_global_local_proj_ref.isInitialized()) {
-			_global_local_proj_ref.initReference(lat, lon);
-			_global_local_alt0 = hil_state.alt / 1000.f;
+			// always publish ground truth attitude message
+			_vehicle_angular_velocity_ground_truth_pub.publish(hil_angular_velocity);
 		}
 
-		hil_lpos.timestamp = timestamp;
-		hil_lpos.xy_valid = true;
-		hil_lpos.z_valid = true;
-		hil_lpos.v_xy_valid = true;
-		hil_lpos.v_z_valid = true;
-		_global_local_proj_ref.project(lat, lon, hil_lpos.x, hil_lpos.y);
-		hil_lpos.z = _global_local_alt0 - hil_state.alt / 1000.0f;
-		hil_lpos.vx = hil_state.vx / 100.0f;
-		hil_lpos.vy = hil_state.vy / 100.0f;
-		hil_lpos.vz = hil_state.vz / 100.0f;
-		matrix::Eulerf euler = matrix::Quatf(hil_attitude.q);
-		matrix::Vector3f acc(hil_state.xacc / 1000.f, hil_state.yacc / 1000.f,  hil_state.zacc / 1000.f);
-		hil_lpos.ax = acc(0);
-		hil_lpos.ay = acc(1);
-		hil_lpos.az = acc(2);
-		hil_lpos.heading = euler.psi();
-		hil_lpos.xy_global = true;
-		hil_lpos.z_global = true;
-		hil_lpos.ref_timestamp = _global_local_proj_ref.getProjectionReferenceTimestamp();
-		hil_lpos.ref_lat = _global_local_proj_ref.getProjectionReferenceLat();
-		hil_lpos.ref_lon = _global_local_proj_ref.getProjectionReferenceLon();
-		hil_lpos.ref_alt = _global_local_alt0;
-		hil_lpos.vxy_max = std::numeric_limits<float>::infinity();
-		hil_lpos.vz_max = std::numeric_limits<float>::infinity();
-		hil_lpos.hagl_min = std::numeric_limits<float>::infinity();
-		hil_lpos.hagl_max = std::numeric_limits<float>::infinity();
+		/* attitude */
+		vehicle_attitude_s hil_attitude{};
+		{
+			hil_attitude.timestamp = timestamp;
 
-		// always publish ground truth attitude message
-		_lpos_ground_truth_pub.publish(hil_lpos);
+			matrix::Quatf q(hil_state.attitude_quaternion);
+			q.copyTo(hil_attitude.q);
+
+			// always publish ground truth attitude message
+			_attitude_ground_truth_pub.publish(hil_attitude);
+		}
+
+		/* global position */
+		vehicle_global_position_s hil_gpos{};
+		{
+			hil_gpos.timestamp = timestamp;
+
+			hil_gpos.lat = hil_state.lat / 1E7;//1E7
+			hil_gpos.lon = hil_state.lon / 1E7;//1E7
+			hil_gpos.alt = hil_state.alt / 1E3;//1E3
+
+			// always publish ground truth attitude message
+			_gpos_ground_truth_pub.publish(hil_gpos);
+		}
+
+		/* local position */
+		vehicle_local_position_s hil_lpos{};
+		{
+			hil_lpos.timestamp = timestamp;
+
+			double lat = hil_state.lat * 1e-7;
+			double lon = hil_state.lon * 1e-7;
+
+			if (!_global_local_proj_ref.isInitialized()) {
+				_global_local_proj_ref.initReference(lat, lon);
+				_global_local_alt0 = hil_state.alt / 1000.f;
+			}
+
+			hil_lpos.timestamp = timestamp;
+			hil_lpos.xy_valid = true;
+			hil_lpos.z_valid = true;
+			hil_lpos.v_xy_valid = true;
+			hil_lpos.v_z_valid = true;
+			_global_local_proj_ref.project(lat, lon, hil_lpos.x, hil_lpos.y);
+			hil_lpos.z = _global_local_alt0 - hil_state.alt / 1000.0f;
+			hil_lpos.vx = hil_state.vx / 100.0f;
+			hil_lpos.vy = hil_state.vy / 100.0f;
+			hil_lpos.vz = hil_state.vz / 100.0f;
+			matrix::Eulerf euler = matrix::Quatf(hil_attitude.q);
+			matrix::Vector3f acc(hil_state.xacc / 1000.f, hil_state.yacc / 1000.f,  hil_state.zacc / 1000.f);
+			hil_lpos.ax = acc(0);
+			hil_lpos.ay = acc(1);
+			hil_lpos.az = acc(2);
+			hil_lpos.heading = euler.psi();
+			hil_lpos.xy_global = true;
+			hil_lpos.z_global = true;
+			hil_lpos.ref_timestamp = _global_local_proj_ref.getProjectionReferenceTimestamp();
+			hil_lpos.ref_lat = _global_local_proj_ref.getProjectionReferenceLat();
+			hil_lpos.ref_lon = _global_local_proj_ref.getProjectionReferenceLon();
+			hil_lpos.ref_alt = _global_local_alt0;
+			hil_lpos.vxy_max = std::numeric_limits<float>::infinity();
+			hil_lpos.vz_max = std::numeric_limits<float>::infinity();
+			hil_lpos.hagl_min = std::numeric_limits<float>::infinity();
+			hil_lpos.hagl_max = std::numeric_limits<float>::infinity();
+
+			// always publish ground truth attitude message
+			_lpos_ground_truth_pub.publish(hil_lpos);
+		}
+	}
+	else
+	{
+		component_state_s component_state;
+
+		component_state.timestamp = timestamp;
+		component_state.component_id = msg->compid;
+
+		matrix::Quatf q(hil_state.attitude_quaternion);
+			q.copyTo(component_state.attitude_quaternion);
+
+		component_state.body_angular_rate[0] = hil_state.rollspeed;
+		component_state.body_angular_rate[1] = hil_state.pitchspeed;
+		component_state.body_angular_rate[2] = hil_state.yawspeed;
+
+		component_state.pos[0] = hil_state.lat*M_PI_F/180.0*1e-7;
+		component_state.pos[1] = hil_state.lon*M_PI_F/180.0*1e-7;
+		component_state.pos[2] = hil_state.alt/1000.0;
+
+		component_state.vel[0] = hil_state.vx/100.0;
+		component_state.vel[1] = hil_state.vy/100.0;
+		component_state.vel[2] = hil_state.vz/100.0;
+
+		_component_state_pub.publish(component_state);
 	}
 }
 

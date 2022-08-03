@@ -60,6 +60,7 @@ set(msg_files
 	collision_constraints.msg
 	collision_report.msg
 	commander_state.msg
+	component_state.msg
 	control_allocator_status.msg
 	cpuload.msg
 	differential_pressure.msg
