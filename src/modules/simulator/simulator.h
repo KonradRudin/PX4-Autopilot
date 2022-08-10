@@ -245,10 +245,15 @@ private:
 
 	void actuator_controls_from_outputs(mavlink_hil_actuator_controls_t *msg);
 
-
 	// uORB publisher handlers
+	struct CompStateUOrb {
+		uint8_t comp_id{0};
+		orb_advert_t orb_advert{nullptr};
+		int instance{-1};
+	};
+	CompStateUOrb _component_states_pub[ORB_MULTI_MAX_INSTANCES];
+	void publish_comp_state(const component_state_s * const component_state, const uint8_t comp_id);
 	uORB::Publication<vehicle_angular_velocity_s>	_vehicle_angular_velocity_ground_truth_pub{ORB_ID(vehicle_angular_velocity_groundtruth)};
-	uORB::Publication<component_state_s>		_component_state_pub{ORB_ID(component_state)};
 	uORB::Publication<vehicle_attitude_s>		_attitude_ground_truth_pub{ORB_ID(vehicle_attitude_groundtruth)};
 	uORB::Publication<vehicle_global_position_s>	_gpos_ground_truth_pub{ORB_ID(vehicle_global_position_groundtruth)};
 	uORB::Publication<vehicle_local_position_s>	_lpos_ground_truth_pub{ORB_ID(vehicle_local_position_groundtruth)};

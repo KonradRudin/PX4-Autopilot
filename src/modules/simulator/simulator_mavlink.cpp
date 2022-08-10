@@ -647,30 +647,28 @@ void Simulator::handle_message_hil_state_quaternion(const mavlink_message_t *msg
 			_lpos_ground_truth_pub.publish(hil_lpos);
 		}
 	}
-	else
-	{
-		component_state_s component_state;
 
-		component_state.timestamp = timestamp;
-		component_state.component_id = msg->compid;
+	component_state_s component_state;
 
-		matrix::Quatf q(hil_state.attitude_quaternion);
-			q.copyTo(component_state.attitude_quaternion);
+	component_state.timestamp = timestamp;
+	component_state.component_id = msg->compid;
 
-		component_state.body_angular_rate[0] = hil_state.rollspeed;
-		component_state.body_angular_rate[1] = hil_state.pitchspeed;
-		component_state.body_angular_rate[2] = hil_state.yawspeed;
+	matrix::Quatf q(hil_state.attitude_quaternion);
+		q.copyTo(component_state.attitude_quaternion);
 
-		component_state.pos[0] = hil_state.lat*M_PI_F/180.0*1e-7;
-		component_state.pos[1] = hil_state.lon*M_PI_F/180.0*1e-7;
-		component_state.pos[2] = hil_state.alt/1000.0;
+	component_state.body_angular_rate[0] = hil_state.rollspeed;
+	component_state.body_angular_rate[1] = hil_state.pitchspeed;
+	component_state.body_angular_rate[2] = hil_state.yawspeed;
 
-		component_state.vel[0] = hil_state.vx/100.0;
-		component_state.vel[1] = hil_state.vy/100.0;
-		component_state.vel[2] = hil_state.vz/100.0;
+	component_state.pos[0] = hil_state.lat*M_PI_F/180.0*1e-7;
+	component_state.pos[1] = hil_state.lon*M_PI_F/180.0*1e-7;
+	component_state.pos[2] = hil_state.alt/1000.0;
 
-		_component_state_pub.publish(component_state);
-	}
+	component_state.vel[0] = hil_state.vx/100.0;
+	component_state.vel[1] = hil_state.vy/100.0;
+	component_state.vel[2] = hil_state.vz/100.0;
+
+	publish_comp_state(&component_state, msg->compid);
 }
 
 void Simulator::handle_message_landing_target(const mavlink_message_t *msg)
@@ -1577,4 +1575,43 @@ int Simulator::publish_distance_topic(const mavlink_distance_sensor_t *dist_mavl
 	}
 
 	return PX4_OK;
+}
+
+void
+Simulator::publish_comp_state(const component_state_s * const component_state, const uint8_t comp_id) {
+	assert(component_state != nullptr);
+
+	Simulator::CompStateUOrb * component_uorb = nullptr;
+
+	// Checking existing channel
+	for (unsigned i = 0u; i < ORB_MULTI_MAX_INSTANCES; i++) {
+		if (_component_states_pub[i].comp_id == comp_id) {
+			component_uorb = &_component_states_pub[i];
+			break;
+		}
+	}
+
+	if (component_uorb == nullptr) {
+		// Search for the first free spot
+		for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+			if (_component_states_pub[i].instance == -1) {
+				component_uorb = &_component_states_pub[i];
+				break;
+			}
+		}
+
+		// No free channels left
+		if (component_uorb == nullptr) {
+			return;
+		}
+
+		// advertise
+		component_uorb->orb_advert = orb_advertise_multi(ORB_ID(component_state), nullptr, &component_uorb->instance);
+		if (component_uorb->orb_advert == nullptr) {
+			return;
+		}
+		component_uorb->comp_id = comp_id;
+	}
+
+	(void)orb_publish(ORB_ID(component_state), component_uorb->orb_advert, component_state);
 }

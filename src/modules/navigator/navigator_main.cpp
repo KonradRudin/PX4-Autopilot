@@ -185,6 +185,21 @@ void Navigator::run()
 			orb_copy(ORB_ID(mission), _mission_sub, &mission);
 		}
 
+		/*Example component update*/
+		static uint64_t print_cnt = 0;
+		for (size_t i = 0u; i<ORB_MULTI_MAX_INSTANCES; i++) {
+			component_state_s state;
+			if (_component_state_sub[i].update(&state)) {
+				if (print_cnt % 100 == 0) {
+					matrix::Euler<float> angles{matrix::Quaternion<float>(state.attitude_quaternion)};
+					printf("CompID: %d \t Pos: %f \t %f \t %f \n \t Vel: %f \t %f \t %f \n", state.component_id, state.pos[0], state.pos[1], state.pos[2], (double)state.vel[0], (double)state.vel[1], (double)state.vel[2]);
+					printf("\t Att: %f \t %f \t %f \n \t rate: %f \t %f \t %f \n", (double)(angles.phi()*180.0f/M_PI_F), (double)(angles.theta()*180.0f/M_PI_F), (double)(angles.psi()*180.0f/M_PI_F), (double)state.body_angular_rate[0], (double)state.body_angular_rate[1], (double)state.body_angular_rate[2]);
+				}
+			}
+		}
+		print_cnt++;
+
+
 		/* gps updated */
 		if (_gps_pos_sub.updated()) {
 			_gps_pos_sub.copy(&_gps_pos);
